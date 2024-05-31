@@ -1,0 +1,134 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Strength Checker</title>
+        <link rel="stylesheet" href="styles.css">
+        <header>
+            <img src="logo.png" alt="Logo" id="logo">
+        </header>
+        
+        <script  src="script.js"></script>
+    </head>
+    <body>
+        <div id="password-checker-container">
+            
+            <input type="text" id="usernameInput" placeholder="Enter your username" name="username">
+            <input type="password" id="passwordInput" placeholder="Enter your password" name="password">
+            <button onclick="togglePasswordVisibility()">Show/Hide Password</button>
+            <button onclick="checkAndDisplayPasswordStrength()">Check Strength</button>
+            
+            <div id="passwordStrengthFeedback"></div>
+            <div id="commonPasswordMessage"></div> <!-- Common password message will be displayed here -->
+            <div id="crackTime"></div>
+            <button onclick="generatePassphrase()">Generate Passphrase</button>
+            
+            <div id="passphrase"></div>
+        </div>
+
+        <script>
+            function generatePassphrase() {
+                var numChars = 13; // Minimum number of characters
+                var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'; // Character set
+                var passphrase = '';
+                
+                // Generate passphrase meeting the requirements
+                while (true) {
+                    passphrase = ''; // Reset passphrase
+                    for (var i = 0; i < numChars; i++) {
+                        passphrase += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+                    // Check if the passphrase meets all requirements
+                    if (/[0-9]/.test(passphrase) && /[a-z]/.test(passphrase) &&
+                        /[A-Z]/.test(passphrase) && /[^a-zA-Z0-9]/.test(passphrase) &&
+                        passphrase.length >= numChars) {
+                        break; // Exit the loop if requirements are met
+                    }
+                }
+                
+                // Display passphrase only in the password input field
+                document.getElementById('passwordInput').value = passphrase;
+            }
+
+            function togglePasswordVisibility() {
+                var passwordInput = document.getElementById("passwordInput");
+                if (passwordInput.type === "password") {
+                    passwordInput.type = "text";
+                } else {
+                    passwordInput.type = "password";
+                }
+            }
+            // Function to display a message if the password is commonly used
+            function displayCommonPasswordMessage() {
+                var password = document.getElementById('passwordInput').value;
+                // Fetch common passwords from cmn_pwd.json
+                fetch('cmn_pwd.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Extract passwords from JSON data
+                        const commonPasswords = data[2].data.map(entry => entry.passwords);
+
+                        // Check if the entered password is in the common passwords list
+                        if (commonPasswords.includes(password)) {
+                            document.getElementById('commonPasswordMessage').innerHTML = "<strong>Warning:</strong> This password is commonly used and may be easy to guess.";
+                        } else {
+                            document.getElementById('commonPasswordMessage').innerHTML = "";
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching common passwords:', error);
+                    });
+            }
+            </script>
+            <script>
+                function calculateAndDisplayProbability() {
+                    var password = document.getElementById('passwordInput').value;
+                    sha256(password)
+                        .then(hash => {
+                            var timeToCrack = calculateCrackTime(password);
+                            document.getElementById('crackTime').innerHTML = "SHA-256 hash: " + hash + "<br>Time to crack : " + timeToCrack + " seconds";
+                        })
+                        .catch(error => {
+                            console.error('Error calculating SHA-256 hash:', error);
+                        });
+                }
+            
+                // Function to calculate SHA-256 hash
+                function sha256(str) {
+                    const encoder = new TextEncoder();
+                    const data = encoder.encode(str);
+                    return window.crypto.subtle.digest('SHA-256', data).then(hash => {
+                        return Array.from(new Uint8Array(hash)).map(byte => {
+                            return ('0' + byte.toString(16)).slice(-2);
+                        }).join('');
+                    });
+                }
+            
+                // Function to calculate crack time
+                function calculateCrackTime(password) {
+                    // Estimate number of possible combinations based on password length and complexity
+                    var possibleCombinations = Math.pow(62, password.length); // Assuming alphanumeric characters (A-Z, a-z, 0-9)
+            
+                    // Assuming an attacker can try a certain number of combinations per second
+                    var attemptsPerSecond = 1000000; // Adjust this value based on your estimation
+            
+                    // Calculate time to crack in seconds
+                    var timeToCrackSeconds = possibleCombinations / attemptsPerSecond;
+            
+                    return timeToCrackSeconds.toFixed(10); // Return time to crack with 10 decimal places
+                }
+            </script>
+            
+        <script>
+            function checkAndDisplayPasswordStrength() {
+                checkPasswordStrength();
+                displayCommonPasswordMessage();
+                calculateAndDisplayProbability();
+            
+            }
+
+
+        </script>
+    </body>
+    </html>
